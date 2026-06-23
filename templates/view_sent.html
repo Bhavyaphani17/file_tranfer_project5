@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Transfer</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <!-- Header -->
+    <header class="bg-white shadow">
+        <div class="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
+            <h1 class="text-2xl font-bold text-gray-900">File Transfer System</h1>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="flex flex-1">
+        <!-- Sidebar -->
+        <nav class="bg-gray-800 w-64 min-h-screen p-4">
+            <ul class="space-y-2">
+                <li>
+                    <a href="/upload" class="flex items-center p-2 text-gray-300 hover:bg-gray-700 rounded-md">
+                        <i class="fas fa-upload mr-2"></i> Upload
+                    </a>
+                </li>
+                <li>
+                    <a href="/download" class="flex items-center p-2 text-gray-300 hover:bg-gray-700 rounded-md">
+                        <i class="fas fa-download mr-2"></i> Download
+                    </a>
+                </li>
+                <li>
+                    <a href="/view_sent" class="flex items-center p-2 text-white bg-blue-600 rounded-md">
+                        <i class="fas fa-history mr-2"></i> View Sent
+                    </a>
+                </li>
+                <li>
+                    <a href="/logout" class="flex items-center p-2 text-gray-300 hover:bg-gray-700 rounded-md">
+                        <i class="fas fa-sign-out-alt mr-2"></i> Logout
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 p-8">
+            <div class="max-w-2xl mx-auto bg-white p-6 rounded-lg shadow">
+                <h2 class="text-xl font-semibold mb-4">View Sent Files</h2>
+                
+                <!-- Flash Messages -->
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="mb-4 p-3 rounded-md {% if category == 'error' %}bg-red-100 text-red-700{% else %}bg-green-100 text-green-700{% endif %}">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+
+                <div id="fileList" class="space-y-4"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-4">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <p>© 2025 File Transfer System. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        const fileList = document.getElementById('fileList');
+
+        async function fetchSentFiles() {
+            try {
+                const response = await fetch('/get_sent_files', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: ''
+                });
+                const data = await response.json();
+                if (data.error) {
+                    fileList.innerHTML = `<p class="text-red-700">${data.error}</p>`;
+                    return;
+                }
+                displayFiles(data.files);
+            } catch (error) {
+                fileList.innerHTML = '<p class="text-red-700">Error fetching sent files. Please try again.</p>';
+                console.error('Error:', error);
+            }
+        }
+
+        function displayFiles(files) {
+            fileList.innerHTML = '';
+            if (files.length === 0) {
+                fileList.innerHTML = '<p class="text-gray-600">No sent files found.</p>';
+                return;
+            }
+            files.forEach(file => {
+                const div = document.createElement('div');
+                div.className = 'flex items-center justify-between p-3 bg-gray-50 rounded-md';
+                // Display receiver as "name (username)" if name exists, otherwise just username
+                const receiverDisplay = file.receiver_name ? `${file.receiver_name} (${file.receiver_id})` : file.receiver_id;
+                div.innerHTML = `
+                    <div>
+                        <p class="text-sm font-medium text-gray-900">${file.filename}</p>
+                        <p class="text-xs text-gray-500">Sent to: ${receiverDisplay}</p>
+                        <p class="text-xs text-gray-500">Uploaded: ${new Date(file.upload_time).toLocaleString()}</p>
+                    </div>
+                    <div class="space-x-2">
+                        <a href="/view_file/${file.id}" target="_blank" class="text-blue-600 hover:text-blue-800">
+                            <i class="fas fa-eye"></i> View
+                        </a>
+                        <a href="/download_file/${file.id}" class="text-green-600 hover:text-green-800">
+                            <i class="fas fa-download"></i> Download
+                        </a>
+                    </div>
+                `;
+                fileList.appendChild(div);
+            });
+        }
+
+        // Fetch sent files on page load
+        window.onload = fetchSentFiles;
+    </script>
+</body>
+</html>
